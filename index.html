@@ -1,10 +1,24 @@
 <html>
+
+<body>
 	<head>
 		<title>RTC Test</title>
 		<meta charset="utf-8">
 	</head>
-	<body>
-		<h1>gun-rtc</h1>
-		<script src="index.js"></script>
-	</body>
+	<style>
+		#outgoing {
+			width: 600px;
+			font-famiy: sans-serif;
+			word-wrap: break-word;
+		}
+	</style>
+	<form>
+		<textarea id="incoming" cols="100" rows="15"></textarea>
+		<button type="submit">submit</button>
+	</form>
+	<div id="outgoing"></div>
+	<script src="node_modules/simple-peer/simplepeer.min.js"></script>
+	<script src="index.js"></script>
+</body>
+
 </html>
