@@ -1,57 +1,19 @@
-/*globals console, Gun*/
-var peer, queue, gun, id, Peer;
+/*globals console, Gun, SimplePeer */
+var peer, queue, gun, id;
 
 gun = new Gun('http://localhost:3000/gun')
 	.get('rtc').set().path('offers');
-Peer = window.Peer = window.SimplePeer;
-id = Gun.text.random();
-queue = [];
+
 
 (function () {
 	'use strict';
 	var offer, initiator = !!location.hash;
 
 
-	peer = new Peer({
+	peer = new SimplePeer({
 		initiator: initiator,
 		trickle: false
 	});
-
-
-	function $(s, e) {
-		if (!e) {
-			return document.querySelector(s);
-		} else {
-			return {
-				run: function (c) {
-					s = typeof s === 'string' ? $(s) : s;
-					s.addEventListener(e, c);
-					return s;
-				}
-			};
-		}
-	}
-
-
-	function format(c) {
-		if (typeof c === 'string') {
-			return JSON.parse(c);
-		} else {
-			return JSON.stringify(c);
-		}
-	}
-
-
-
-
-	$('form', 'submit').run(function (ev) {
-		ev.preventDefault();
-		var incoming = $('#incoming').value,
-			res = format(incoming);
-
-		peer.signal(res);
-	});
-
 
 
 	peer
@@ -72,8 +34,6 @@ queue = [];
 		.on('close', function () {
 			gun.put(null);
 		});
-
-
 
 
 	gun.map().val(function (answer) {
