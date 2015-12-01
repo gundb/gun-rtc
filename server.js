@@ -1,12 +1,13 @@
 /*jslint node: true, nomen: true */
 'use strict';
-var Gun, app, express, port;
+var answer;
+
+var express = require('express');
+var Gun = require('gun');
+var app = express();
+var port = process.argv[2] || 3000;
 
 
-express = require('express');
-Gun = require('gun');
-app = express();
-port = process.argv[2] || 3000;
 
 new Gun({
 	file: false
@@ -14,11 +15,11 @@ new Gun({
 
 
 function serve(route) {
-	app.use('/', express['static'](__dirname + '/' + route));
+	app.use('/', express['static'](__dirname + route));
 }
 
-serve('assets');
-serve('routes');
+serve('/assets');
+serve('/routes');
 
 
 

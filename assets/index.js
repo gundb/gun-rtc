@@ -1,13 +1,18 @@
 /*globals console, Gun, SimplePeer */
-var peer, queue, gun, id;
+var peer, gun, id = Gun.text.random();
 
 gun = new Gun('http://localhost:3000/gun')
-	.get('rtc').set().path('offers');
+	.get('data').set();
 
 
 (function () {
 	'use strict';
+	if (!SimplePeer.WEBRTC_SUPPORT) {
+		return;
+	}
 	var offer, initiator = !!location.hash;
+	gun = gun.path('offers').set();
+	offer = {};
 
 
 	peer = new SimplePeer({
@@ -17,30 +22,22 @@ gun = new Gun('http://localhost:3000/gun')
 
 
 	peer
-		.on('error', function (err) {
-			console.log('error', err);
-		})
+		.on('error', console.log)
 		.on('connect', function () {
 			console.log('Connection established');
 			gun.put(null);
 		})
-		.on('data', function (data) {
-			console.log(data);
-		})
+		.on('data', console.log)
 		.on('signal', function (data) {
 			console.log(data.type, 'received');
-			gun.set(offer = data);
+			offer.sdp = data.sdp;
+			gun.set(data);
 		})
 		.on('close', function () {
 			gun.put(null);
 		});
 
 
-	gun.map().val(function (answer) {
-		if (offer && offer.sdp === answer.sdp) {
-			return;
-		}
-		peer.signal(answer);
-	});
+	gun.handshake(peer, offer);
 
 }());
