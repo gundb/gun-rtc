@@ -7,37 +7,15 @@ gun = new Gun('http://localhost:3000/gun')
 
 (function () {
 	'use strict';
-	if (!SimplePeer.WEBRTC_SUPPORT) {
-		return;
-	}
-	var offer, initiator = !!location.hash;
-	gun = gun.path('offers').set();
-	offer = {};
+	if (SimplePeer.WEBRTC_SUPPORT) {
+		gun.path('peers').set();
 
-
-	peer = new SimplePeer({
-		initiator: initiator,
-		trickle: false
-	});
-
-
-	peer
-		.on('error', console.log)
-		.on('connect', function () {
-			console.log('Connection established');
-			gun.put(null);
-		})
-		.on('data', console.log)
-		.on('signal', function (data) {
-			console.log(data.type, 'received');
-			offer.sdp = data.sdp;
-			gun.set(data);
-		})
-		.on('close', function () {
-			gun.put(null);
+		peer = new SimplePeer({
+			initiator: !!location.hash,
+			trickle: false
 		});
 
-
-	gun.handshake(peer, offer);
+		gun.path('peers').handshake(peer);
+	}
 
 }());
