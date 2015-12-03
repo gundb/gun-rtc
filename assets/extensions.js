@@ -1,5 +1,5 @@
-/*jslint nomen: true */
 /*globals Gun, SimplePeer, console */
+/*jslint nomen: true */
 (function () {
 	'use strict';
 	var view, id, peers, younger, addPeer, allPeers = [];
@@ -40,62 +40,59 @@
 
 
 
+	function initiator(init, signal) {
+		var peer = new SimplePeer({
+			initiator: init,
+			trickle: false
+		});
+		peer.on('connect', function () {
+			view.connection();
+			addPeer(peer);
+		});
+		peer.on('signal', signal);
+		peer.on('error', view.error);
+		peer.on('close', view.disconnect);
+		return peer;
+	}
+
+
+
 	function greet(peers, myself) {
 
 		// each peer
 		peers.map().val(function (obj) {
+
 			// except myself
 			if (obj.id === myself || !younger(obj)) {
 				console.log('returning');
 				return;
 			}
 
-			var client, wire, request = {},
+			var client, request = {},
 				messages = Gun.text.random(),
 				peer = this;
 
-			// and a client
-			client = new SimplePeer({
-				initiator: true,
-				trickle: false
+			client = initiator(true, function (SDO) {
+				peer.path(messages).put(request = SDO);
 			});
-
-			peer = this;
 
 			// listen for responses
 			function respond(response) {
 
 				// ignore my own messages
-				if (request.sdp === response.sdp) {
-					return;
+				if (request.sdp !== response.sdp) {
+					client.signal(response);
 				}
-				// send!
-				client.signal(response);
-
 			}
-
-			// set display
-			client.on('error', view.error)
-				.on('close', view.disconnect)
-				.on('connect', function () {
-					view.connection();
-					addPeer(client);
-				})
-				.on('signal', function (SDO) {
-					// generate response
-					peer.path(messages).put(request = SDO);
-				});
 
 			// respond to each message
 			peer.path(messages).map(function () {
 				this.back.val(respond);
 			});
 
-			return peer;
 		});
 
 	}
-
 
 
 
@@ -109,34 +106,19 @@
 				return;
 			}
 
-			peer = new SimplePeer({
-				initiator: false,
-				trickle: false
-			}).on('signal', function (SDO) {
+			peer = initiator(false, function (SDO) {
 				request.put(res = SDO);
-			}).on('connect', function () {
-				view.connection();
-				addPeer(peer);
 			});
 
 
 			request.on().val(function (SDO) {
-				if (SDO.sdp === res.sdp) {
-					return;
+				if (SDO.sdp !== res.sdp) {
+					peer.signal(SDO);
 				}
-				peer.signal(SDO);
 			});
 		});
 
-		return peers;
-
 	}
-
-
-
-
-
-
 
 
 
@@ -155,11 +137,11 @@
 		};
 
 		id = Gun.text.random();
-		greet(peers, id);
-
 		peers.path(id).put({
 			id: id
 		});
+
+		greet(peers, id);
 		listen(peers, id);
 
 	}
