@@ -2,13 +2,14 @@
 /*globals Gun, SimplePeer, console */
 (function () {
 	'use strict';
-	var view, id, peers, addPeer, allPeers = [];
+	var view, id, peers, younger, addPeer, allPeers = [];
 
-
-
-	function younger(node, time) {
-		return (node._['>'].id > time);
-	}
+	younger = (function () {
+		var time = new Date().getTime();
+		return function (node) {
+			return (node._['>'].id > time);
+		};
+	}());
 
 	function $(query) {
 		return document.querySelector(query);
@@ -40,15 +41,11 @@
 
 
 	function greet(peers, myself) {
-		// peers.target.connectionID.SDO
-		// context: peers
-
-		var now = new Date().getTime();
 
 		// each peer
 		peers.map().val(function (obj) {
 			// except myself
-			if (obj.id === myself || !younger(obj, now)) {
+			if (obj.id === myself || !younger(obj)) {
 				console.log('returning');
 				return;
 			}
