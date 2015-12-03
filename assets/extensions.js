@@ -39,12 +39,11 @@
 
 
 
-	Gun.chain.greet = function (myself) {
+	function greet(peers, myself) {
 		// peers.target.connectionID.SDO
 		// context: peers
 
-		var peers = this,
-			now = new Date().getTime();
+		var now = new Date().getTime();
 
 		// each peer
 		peers.map().val(function (obj) {
@@ -98,14 +97,12 @@
 			return peer;
 		});
 
-	};
+	}
 
 
 
 
-	Gun.chain.listen = function (myself) {
-
-		var peers = this;
+	function listen(peers, myself) {
 
 		peers.path(myself).map().val(function (val, key) {
 			var peer, res = {},
@@ -136,7 +133,7 @@
 
 		return peers;
 
-	};
+	}
 
 
 
@@ -161,12 +158,12 @@
 		};
 
 		id = Gun.text.random();
-		peers.greet(id);
+		greet(peers, id);
 
 		peers.path(id).put({
 			id: id
 		});
-		peers.listen(id);
+		listen(peers, id);
 
 	}
 
