@@ -1,9 +1,14 @@
-/*globals Gun, SimplePeer */
+/*jslint nomen: true */
+/*globals Gun, SimplePeer, console */
 (function () {
 	'use strict';
-	var view, peers, id, addPeer, allPeers = [];
+	var view, id, peers, addPeer, allPeers = [];
 
 
+
+	function younger(node, time) {
+		return (node._['>'].id > time);
+	}
 
 	function $(query) {
 		return document.querySelector(query);
@@ -38,12 +43,14 @@
 		// peers.target.connectionID.SDO
 		// context: peers
 
-		var peers = this;
+		var peers = this,
+			now = new Date().getTime();
 
 		// each peer
 		peers.map().val(function (obj) {
 			// except myself
-			if (obj.id === myself) {
+			if (obj.id === myself || !younger(obj, now)) {
+				console.log('returning');
 				return;
 			}
 
