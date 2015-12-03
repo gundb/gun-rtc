@@ -14,3 +14,45 @@ Alice = !initiatojrlk. Bob = initioatoir
 6. the debate it out
 
 7. Connection.
+
+
+
+var peers = {
+	peer: {
+		connection: {
+			sdp: String, type: String
+		},
+		connection: {
+			sdp: String, type: String
+		},
+		connection: {
+			sdp: String, type: String
+		}
+	},
+	peer: {
+		connection: {
+			sdp: String, type: String
+		},
+		connection: {
+			sdp: String, type: String
+		},
+		connection: {
+			sdp: String, type: String
+		}
+	},
+	peer: {
+		connection: {
+			sdp: String, type: String
+		},
+		connection: {
+			sdp: String, type: String
+		},
+		connection: {
+			sdp: String, type: String
+		}
+	},
+}
+
+
+
+

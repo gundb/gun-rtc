@@ -1,17 +1,14 @@
 /*jslint node: true, nomen: true */
 'use strict';
-var answer;
 
 var express = require('express');
-var Gun = require('gun');
+var Gun = require('./gun-rtc');
 var app = express();
 var port = process.argv[2] || 3000;
 
 
 
-new Gun({
-	file: false
-}).attach(app);
+new Gun({ file: false }).attach(app);
 
 
 function serve(route) {
