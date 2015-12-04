@@ -72,22 +72,27 @@
 				messages = Gun.text.random(),
 				peer = this;
 
-			client = initiator(true, function (SDO) {
-				peer.path(messages).put(request = SDO);
+			client = initiator(true, function (signal) {
+				request = signal;
+				var SDO = JSON.stringify(signal);
+				peer.path(messages).set(SDO);
 			});
 
 			// listen for responses
 			function respond(response) {
 
 				// ignore my own messages
-				if (request.sdp !== response.sdp) {
-					client.signal(response);
+				var signal = JSON.parse(response);
+				if (request.sdp === signal.sdp) {
+					return console.log('Prevented');
 				}
+				console.log('Signaling', signal);
+				client.signal(signal);
 			}
 
 			// respond to each message
-			peer.path(messages).map(function () {
-				this.back.val(respond);
+			peer.path(messages).map(function (v, key) {
+				this.path(key).val(respond);
 			});
 
 		});
@@ -106,15 +111,22 @@
 				return;
 			}
 
-			peer = initiator(false, function (SDO) {
-				request.put(res = SDO);
+			peer = initiator(false, function (signal) {
+				res = signal;
+				var SDO = JSON.stringify(signal);
+				request.set(SDO);
 			});
 
 
-			request.on().val(function (SDO) {
-				if (SDO.sdp !== res.sdp) {
-					peer.signal(SDO);
-				}
+			request.map(function (v, key) {
+				console.log('Message status changed');
+				this.path(key).val(function (SDO) {
+					var signal = JSON.parse(SDO);
+					if (signal.sdp === res.sdp) {
+						return console.log('Prevented');
+					}
+					peer.signal(signal);
+				});
 			});
 		});
 
