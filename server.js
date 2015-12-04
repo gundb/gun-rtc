@@ -2,7 +2,7 @@
 'use strict';
 
 var express = require('express');
-var Gun = require('./gun-rtc');
+var Gun = require('gun');
 var app = express();
 var port = process.argv[2] || 3000;
 
