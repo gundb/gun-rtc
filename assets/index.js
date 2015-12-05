@@ -3,11 +3,11 @@
 var allPeers = [];
 (function () {
 	'use strict';
-	var id, peers, younger, addPeer;
+	var id, peers;
 
-	peers = new Gun('http://localhost:3000/gun').get('peers').set();
 
 	if (SimplePeer.WEBRTC_SUPPORT) {
+		peers = new Gun('http://localhost:3000/gun').get('peers').set();
 
 		view.input.oninput = function () {
 			allPeers.forEach(function (peer) {

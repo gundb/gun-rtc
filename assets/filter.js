@@ -12,6 +12,9 @@ function filter(signals) {
 				// signal.candidate.candidate
 				seen = seen || (signal[cdd][cdd] === res[cdd][cdd]);
 			}
+			if (signal.type === 'offer') {
+				seen = seen || (signal.type === res.type);
+			}
 			return seen;
 		});
 	};

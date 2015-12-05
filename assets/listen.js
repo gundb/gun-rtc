@@ -25,6 +25,7 @@ function listen(peers, myself) {
 				if (invalid(signal)) {
 					return;
 				}
+				signals.push(signal);
 				peer.signal(signal);
 			});
 		});

@@ -43,7 +43,12 @@ var initiator, view;
 		});
 		peer.on('signal', signal);
 		peer.on('error', view.error);
-		peer.on('close', view.disconnect);
+		peer.on('close', function () {
+			view.disconnect();
+			allPeers = allPeers.filter(function (p) {
+				return (p !== peer);
+			});
+		});
 		peer.on('data', view.data);
 		return peer;
 	};

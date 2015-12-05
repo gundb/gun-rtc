@@ -46,6 +46,7 @@ function greet(peers, myself) {
 			if (invalid(signal)) {
 				return;
 			}
+			signals.push(signal);
 			client.signal(signal);
 		}
 
