@@ -1,9 +1,10 @@
-/*globals initiator, console */
+/*globals initiator, console, filter */
 function listen(peers, myself) {
 	'use strict';
 
 	peers.path(myself).map().val(function (val, key) {
-		var peer, res = {},
+		var peer, invalid, res = {},
+			signals = [],
 			request = this;
 
 		if (key === 'id') {
@@ -11,16 +12,17 @@ function listen(peers, myself) {
 		}
 
 		peer = initiator(false, function (signal) {
-			res = signal;
+			signals.push(signal);
 			var SDO = JSON.stringify(signal);
 			request.set(SDO);
 		});
 
+		invalid = filter(signals);
 
 		request.map(function (v, key) {
 			this.path(key).val(function (SDO) {
 				var signal = JSON.parse(SDO);
-				if (signal.sdp === res.sdp) {
+				if (invalid(signal)) {
 					return;
 				}
 				peer.signal(signal);

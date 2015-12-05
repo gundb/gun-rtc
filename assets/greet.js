@@ -1,4 +1,4 @@
-/*globals initiator, Gun, console */
+/*globals initiator, Gun, console, filter */
 /*jslint nomen: true */
 
 
@@ -26,22 +26,24 @@ function greet(peers, myself) {
 			return console.log('returning');
 		}
 
-		var client, request = {},
+		var client, invalid, signals = [],
 			messages = Gun.text.random(),
 			peer = this;
 
 		client = initiator(true, function (signal) {
-			request = signal;
+			signals.push(signal);
 			var SDO = JSON.stringify(signal);
 			peer.path(messages).set(SDO);
 		});
 
+		invalid = filter(signals);
+
 		// listen for responses
-		function respond(response) {
+		function respond(SDO) {
 
 			// ignore my own messages
-			var signal = JSON.parse(response);
-			if (request.sdp === signal.sdp) {
+			var signal = JSON.parse(SDO);
+			if (invalid(signal)) {
 				return;
 			}
 			client.signal(signal);

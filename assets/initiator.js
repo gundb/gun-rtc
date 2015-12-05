@@ -35,7 +35,7 @@ var initiator, view;
 	initiator = function (init, signal) {
 		var peer = new SimplePeer({
 			initiator: init,
-			trickle: false
+			trickle: true
 		});
 		peer.on('connect', function () {
 			view.connection();
