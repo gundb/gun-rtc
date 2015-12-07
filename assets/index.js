@@ -1,4 +1,4 @@
-/*globals Gun, SimplePeer, greet, listen, initiator, view */
+/*globals Gun, SimplePeer, greet, listen, view */
 /*jslint nomen: true */
 var allPeers = [];
 (function () {

@@ -45,6 +45,7 @@ var initiator, view;
 		peer.on('error', view.error);
 		peer.on('close', function () {
 			view.disconnect();
+			peer.destroy();
 			allPeers = allPeers.filter(function (p) {
 				return (p !== peer);
 			});

@@ -2,10 +2,9 @@
 function listen(peers, myself) {
 	'use strict';
 
-	peers.path(myself).map().val(function (val, key) {
-		var peer, invalid, res = {},
-			signals = [],
-			request = this;
+	peers.path(myself).map().val(function (v, key) {
+		var peer, invalid, signals, request = this;
+		signals = [];
 
 		if (key === 'id') {
 			return;
@@ -21,12 +20,14 @@ function listen(peers, myself) {
 
 		request.map(function (v, key) {
 			this.path(key).val(function (SDO) {
+
 				var signal = JSON.parse(SDO);
 				if (invalid(signal)) {
 					return;
 				}
 				signals.push(signal);
 				peer.signal(signal);
+
 			});
 		});
 	});
