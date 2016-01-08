@@ -15,8 +15,8 @@ function serve(route) {
 	app.use('/', express['static'](__dirname + route));
 }
 
-serve('/assets');
-serve('/routes');
+serve('/lib');
+serve('/examples');
 
 
 
