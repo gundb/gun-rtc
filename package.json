@@ -16,7 +16,7 @@
   "scripts": {
     "test": "mocha",
     "start": "node server.js",
-		"build": "webpack lib/index.js lib/bundle.js --watch"
+		"build": "webpack --watch"
   },
   "repository": {
     "type": "git",
