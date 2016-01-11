@@ -10,10 +10,13 @@
     "gun": "^0.2.5",
     "simple-peer": "^5.11.8"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "webpack": "^1.12.11"
+  },
   "scripts": {
     "test": "mocha",
-    "start": "node server.js"
+    "start": "node server.js",
+		"build": "webpack lib/index.js lib/bundle.js --watch"
   },
   "repository": {
     "type": "git",
