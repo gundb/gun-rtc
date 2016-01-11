@@ -1,4 +1,4 @@
-Alice = !initiatojrlk. Bob = initioatoir
+Alice = !initiator. Bob = initiator
 
 
 1. Alice loads her page.

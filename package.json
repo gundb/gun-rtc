@@ -1,0 +1,44 @@
+{
+  "name": "gun-rtc",
+  "version": "0.0.1",
+  "description": "WebRTC transport layer for gun",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "dependencies": {
+    "gun": "^0.2.5",
+    "simple-peer": "^5.11.8"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "mocha",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PsychoLlama/gun-rtc.git"
+  },
+  "keywords": [
+    "WebRTC",
+    "RTC",
+    "distributed",
+    "peer-to-peer",
+    "P2P",
+    "gun",
+    "gundb",
+    "db",
+    "transport",
+    "persistence",
+    "data-sync",
+    "synchronization",
+    "sync-engine",
+    "conflict-resolution"
+  ],
+  "author": "Jesse Gibson <jesse@gundb.io> (http://techllama.com)",
+  "license": "(Zlib OR MIT OR Apache-2.0)",
+  "bugs": {
+    "url": "https://github.com/PsychoLlama/gun-rtc/issues"
+  },
+  "homepage": "https://github.com/PsychoLlama/gun-rtc#readme"
+}
