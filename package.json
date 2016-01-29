@@ -11,12 +11,12 @@
     "simple-peer": "^5.11.8"
   },
   "devDependencies": {
-    "webpack": "^1.12.11"
+    "webpack-dev-server": "^1.14.1"
   },
   "scripts": {
     "test": "mocha",
     "start": "node server.js",
-    "build": "webpack --watch"
+    "build": "webpack-dev-server --watch"
   },
   "repository": {
     "type": "git",
