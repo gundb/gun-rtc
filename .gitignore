@@ -2,3 +2,5 @@
 node_modules
 *.swp
 *~
+examples/data.json
+examples/bundle.js

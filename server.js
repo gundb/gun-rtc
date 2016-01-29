@@ -8,7 +8,8 @@ var port = process.argv[2] || 3000;
 
 
 
-new Gun({ file: false }).attach(app);
+var gun = new Gun({ file: 'examples/data.json' }).wsp(app);
+app.use(gun.wsp.server);
 
 
 function serve(route) {
@@ -17,6 +18,7 @@ function serve(route) {
 
 serve('/lib');
 serve('/examples');
+serve('/node_modules/gun/examples');
 
 
 
