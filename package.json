@@ -15,8 +15,8 @@
   },
   "scripts": {
     "test": "mocha",
-    "start": "node server.js",
-    "build": "webpack-dev-server --watch"
+    "start": "nodemon server.js",
+    "build": "webpack --watch"
   },
   "repository": {
     "type": "git",

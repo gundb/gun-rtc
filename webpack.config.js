@@ -1,9 +1,9 @@
 /*jslint node: true, nomen: true*/
 module.exports = {
-	context: __dirname + "/lib",
+	context: __dirname + "/src",
 	entry: "./index.js",
 	output: {
 		path: __dirname,
-		filename: "lib/bundle.js"
+		filename: "dist/bundle.js"
 	}
 };

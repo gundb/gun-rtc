@@ -7,21 +7,17 @@ var app = express();
 var port = process.argv[2] || 3000;
 
 
-
-var gun = new Gun({ file: 'examples/data.json' }).wsp(app);
-app.use(gun.wsp.server);
-
+var gun = new Gun({
+	file: 'peers.json'
+}).wsp(app);
 
 function serve(route) {
 	app.use('/', express['static'](__dirname + route));
 }
 
+serve('/');
 serve('/lib');
-serve('/examples');
-serve('/node_modules/gun/examples');
-
-
-
+serve('/dist');
 
 app.listen(port, function () {
 	console.log('Listening on port', port);
