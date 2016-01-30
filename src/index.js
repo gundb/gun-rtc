@@ -5,28 +5,47 @@ var handshake = require('../lib/handshake');
 var scope = require('../lib/scope');
 var peers = require('../lib/peers');
 var Gun = require('gun/gun');
+peers.myID = Gun.text.random();
 
-var id = Gun.text.random();
+Gun.on('opt').event(function (gun, opt) {
+	opt = opt || {};
+	opt.wire = opt.wire || {};
 
-Gun.on('opt').event(function (gun) {
 	var SimplePeer, support, browser;
 
 	SimplePeer = require('simple-peer');
 	support = SimplePeer.WEBRTC_SUPPORT;
 	browser = typeof window !== 'undefined';
 
-	if (!support && browser) {
+	if (opt.rtc === false || (!support && browser)) {
+		return;
+	}
+	if (!gun.__.opt.peers) {
 		return;
 	}
 
-	peers.db = gun.get(scope + 'peers');
-	peers.db.path(id).put({
-		id: id
-	});
+	if (!peers.db) {
+		peers.db = new Gun({
+			peers: gun.__.opt.peers,
+			rtc: false
+		}).get(scope + 'peers');
 
-	handshake(peers.db, id);
+		peers.db.path(peers.myID).put({
+			id: peers.myID
+		});
+
+		handshake(peers.db, peers.myID);
+	}
+
+	gun.opt({
+		wire: {
+			get: opt.wire.get || require('./get'),
+			put: opt.wire.get || require('./put')
+		}
+	}, true);
+
 });
 
-var gun = new Gun(location + '/gun');
+window.gun = new Gun(location + 'gun');
 
 module.exports = Gun;

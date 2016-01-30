@@ -4,7 +4,7 @@
 var express = require('express');
 var Gun = require('gun');
 var app = express();
-var port = process.argv[2] || 3000;
+var port = process.argv[2] || 8080;
 
 
 var gun = new Gun({

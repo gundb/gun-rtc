@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "gun": "^0.3.1",
+    "iso-emitter": "^1.0.0",
     "simple-peer": "^5.11.8"
   },
   "devDependencies": {
@@ -15,7 +16,7 @@
   },
   "scripts": {
     "test": "mocha",
-    "start": "nodemon server.js",
+    "start": "node server.js",
     "build": "webpack --watch"
   },
   "repository": {

@@ -51,29 +51,48 @@
 	var scope = __webpack_require__(42);
 	var peers = __webpack_require__(5);
 	var Gun = __webpack_require__(3);
+	peers.myID = Gun.text.random();
 
-	var id = Gun.text.random();
+	Gun.on('opt').event(function (gun, opt) {
+		opt = opt || {};
+		opt.wire = opt.wire || {};
 
-	Gun.on('opt').event(function (gun) {
 		var SimplePeer, support, browser;
 
 		SimplePeer = __webpack_require__(6);
 		support = SimplePeer.WEBRTC_SUPPORT;
 		browser = typeof window !== 'undefined';
 
-		if (!support && browser) {
+		if (opt.rtc === false || (!support && browser)) {
+			return;
+		}
+		if (!gun.__.opt.peers) {
 			return;
 		}
 
-		peers.db = gun.get(scope + 'peers');
-		peers.db.path(id).put({
-			id: id
-		});
+		if (!peers.db) {
+			peers.db = new Gun({
+				peers: gun.__.opt.peers,
+				rtc: false
+			}).get(scope + 'peers');
 
-		handshake(peers.db, id);
+			peers.db.path(peers.myID).put({
+				id: peers.myID
+			});
+
+			handshake(peers.db, peers.myID);
+		}
+
+		gun.opt({
+			wire: {
+				get: opt.wire.get || __webpack_require__(43),
+				put: opt.wire.get || __webpack_require__(45)
+			}
+		}, true);
+
 	});
 
-	var gun = new Gun(location + '/gun');
+	window.gun = new Gun(location + 'gun');
 
 	module.exports = Gun;
 
@@ -132,8 +151,9 @@
 
 			function handleSignal(signal) {
 	      var obj, SDO = JSON.stringify(signal);
-	      filter(SDO);
 				obj = {};
+
+	      filter(SDO);
 
 				// post the session object
 				obj[Gun.text.random(10)] = SDO;
@@ -1545,6 +1565,7 @@
 	Gun = __webpack_require__(3);
 	SimplePeer = __webpack_require__(6);
 	view = __webpack_require__(39);
+	var Stream = __webpack_require__(44);
 
 
 
@@ -1556,7 +1577,7 @@
 		peer.on('connect', function () {
 			view.connection();
 			peers.connected[id] = peer;
-			window.peers = peers.connected;
+			window.peers = peers;
 		});
 		peer.on('signal', signal);
 		peer.on('error', view.error);
@@ -1565,7 +1586,16 @@
 			peer.destroy();
 			delete peers.connected[id];
 		});
-		peer.on('data', view.data);
+		peer.on('data', function (data) {
+			var event = 'data';
+			if (data.response) {
+				event = data.response;
+				console.log('Response!');
+			}
+			console.log(data);
+			Stream.emit(event, data);
+		});
+
 		return peer;
 	};
 
@@ -1587,11 +1617,18 @@
 				}
 			}
 			return this;
+		},
+
+		broadcast: function (msg) {
+			return this.each(function (peer) {
+				peer.send(msg);
+			});
 		}
 	};
 
 	module.exports = {
 		connected: new PeerObject(),
+		myID: null,
 		db: null
 	};
 
@@ -7554,6 +7591,157 @@
 
 	/*jslint node: true*/
 	module.exports = 'gx904egpMe7bl1ggaPVv:';
+
+
+/***/ },
+/* 43 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*jslint node: true, nomen: true*/
+	'use strict';
+	var Gun = __webpack_require__(3);
+	var peers = __webpack_require__(5);
+	var Stream = __webpack_require__(44);
+	var stream = new Stream();
+	var gun = new Gun();
+
+	stream.on('request', function (obj) {
+		var online = peers.connected;
+		gun.get(obj.query['#']).on(function (data, key) {
+			if (online[obj.peer]) {
+				online[obj.peer].send({
+					value: data,
+					response: obj.request
+				});
+			}
+		});
+	});
+
+	module.exports = function (query, cb, opt) {
+		var request = Gun.text.random(20);
+
+		stream.on(request, function (data) {
+			if (typeof data === 'string') {
+				return cb(data);
+			}
+			cb(null, data.value);
+		});
+
+		peers.connected.broadcast({
+			query: query,
+			peer: peers.myID,
+			request: request
+		});
+	};
+
+
+/***/ },
+/* 44 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*global module*/
+
+	var Stream;
+
+	(function () {
+		'use strict';
+
+		var streams = [];
+
+		function array(obj) {
+			return Array.prototype.slice.call(obj);
+		}
+
+		function callbacks(args) {
+			return array(args).filter(function (cb) {
+				return typeof cb === 'function';
+			});
+		}
+
+		function events(args) {
+			return array(args).filter(function (event) {
+				return typeof event === 'string';
+			});
+		}
+
+		Stream = function () {
+			if (!(this instanceof Stream)) {
+				return new Stream();
+			}
+			this.events = {};
+			streams.push(this);
+		};
+
+		Stream.prototype = {
+			constructor: Stream,
+			on: function () {
+				var cbs, names, stream = this;
+				cbs = callbacks(arguments);
+				names = events(arguments);
+
+				names.forEach(function (event) {
+					cbs.forEach(function (cb) {
+						if (!stream.events[event]) {
+							stream.events[event] = [];
+						}
+						stream.events[event].push(cb);
+					});
+				});
+
+				return this;
+			},
+
+			emit: function (event) {
+				if (!event) {
+					return this;
+				}
+				var args = array(arguments).slice(1);
+				if (!this.events[event]) {
+					return this;
+				}
+				this.events[event].forEach(function (cb) {
+					cb.apply(null, args);
+				});
+
+				return this;
+			},
+
+			bind: function () {
+				var names, stream = this;
+				names = events(arguments);
+
+				return function () {
+					var args = array(arguments);
+
+					names.forEach(function (event) {
+						stream.emit.apply(stream, [event].concat(args));
+					});
+
+					return names.length;
+				};
+			}
+
+		};
+
+		Stream.emit = function (event) {
+			var args = array(arguments);
+			streams.forEach(function (stream) {
+				stream.emit.apply(stream, args);
+			});
+			return streams.length;
+		};
+
+		if (true) {
+			module.exports = Stream;
+		}
+
+	}());
+
+
+/***/ },
+/* 45 */
+/***/ function(module, exports) {
+
 
 
 /***/ }
