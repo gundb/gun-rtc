@@ -5,7 +5,7 @@ var handshake = require('../lib/handshake');
 var scope = require('../lib/scope');
 var peers = require('../lib/peers');
 var Gun = require('gun/gun');
-peers.myID = Gun.text.random();
+var local = require('./local');
 
 Gun.on('opt').event(function (gun, opt) {
 	opt = opt || {};
@@ -25,16 +25,17 @@ Gun.on('opt').event(function (gun, opt) {
 	}
 
 	if (!peers.db) {
+
 		peers.db = new Gun({
 			peers: gun.__.opt.peers,
 			rtc: false
 		}).get(scope + 'peers');
 
-		peers.db.path(peers.myID).put({
-			id: peers.myID
+		peers.db.path(local.ID).put({
+			id: local.ID
 		});
 
-		handshake(peers.db, peers.myID);
+		handshake(peers.db, local.ID);
 	}
 
 	gun.opt({
