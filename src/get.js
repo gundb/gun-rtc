@@ -6,36 +6,38 @@ var peers = require('../lib/peers');
 var Stream = require('iso-emitter');
 var stream = new Stream();
 
-stream.on('request', function (obj) {
-	var online = peers.online;
-	local.db.get(obj.query['#'], function (err, node) {
-		if (online[obj.peer]) {
+stream.on('request', function (req, peer) {
+	local.db.__.opt.wire.get(req.value, function (err, node) {
+		if (peer.connected) {
 			if (err) {
-				online[obj.peer].send(err);
+				return peer.send(err);
 			}
-			online[obj.peer].send({
+			peer.send({
 				value: node,
-				response: obj.request
+				response: req.ID
 			});
 		}
 	});
 });
 
 module.exports = function (query, cb, opt) {
-	var request = Gun.text.random(20);
+	var requestID = Gun.text.random(20);
 
-	local.db.get(query[Gun._.soul], cb);
+	local.db.__.opt.wire.get(query, cb, opt);
 
-	stream.on(request, function (data) {
-		if (typeof data === 'string') {
-			return cb(data);
+	stream.on(requestID, function (data) {
+		if (data.err) {
+			return cb(data.err);
 		}
 		cb(null, data.value);
+
+		// when calling `.put`, the raw `.get` driver responds
+		// with more data causing it to infinitely recurse.
+		// support options for server stuns.
 	});
 
 	peers.online.broadcast({
-		query: query,
-		peer: local.ID,
-		request: request
+		value: query,
+		ID: requestID
 	});
 };

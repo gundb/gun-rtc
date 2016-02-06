@@ -51,7 +51,7 @@
 	var scope = __webpack_require__(43);
 	var peers = __webpack_require__(5);
 	var Gun = __webpack_require__(3);
-	var local = __webpack_require__(46);
+	var local = __webpack_require__(44);
 
 	Gun.on('opt').event(function (gun, opt) {
 		opt = opt || {};
@@ -81,13 +81,21 @@
 				id: local.ID
 			});
 
+			// optimization
+			// erase peer after leaving
+	//		if (browser) {
+	//			window.onunload = function () {
+	//				peers.db.path(local.ID).put(null);
+	//			};
+	//		}
+
 			handshake(peers.db, local.ID);
 		}
 
 		gun.opt({
 			wire: {
-				get: opt.wire.get || __webpack_require__(44),
-				put: opt.wire.get || __webpack_require__(45)
+				get: opt.wire.get || __webpack_require__(45),
+				put: opt.wire.get || __webpack_require__(46)
 			}
 		}, true);
 
@@ -166,13 +174,20 @@
 
 	    // listen for new messages
 	    peer.path(myID).map().val(function (res, key) {
+				if (typeof res === 'object') {
+					return;
+				}
 
 	      if (key === 'id' || filter(res)) {
 	        return;
 	      }
 
 	      var signal = JSON.parse(res);
-	      client.signal(signal);
+
+				// connection failed. Don't join.
+				if (!client.destroyed) {
+					client.signal(signal);
+				}
 	    });
 
 	  });
@@ -216,12 +231,21 @@
 				}
 				Type.text.match = function(t, o){ var r = false;
 					t = t || '';
-					o = o || {}; // {'=', '*', '<', '>', '+', '-', '?', '&'} // exactly equal, anything after, lexically larger, lexically lesser, added in, subtacted from, questionable fuzzy match, and ends with.
+					o = o || {}; // {'~', '=', '*', '<', '>', '+', '-', '?', '!'} // ignore uppercase, exactly equal, anything after, lexically larger, lexically lesser, added in, subtacted from, questionable fuzzy match, and ends with.
+					if(Type.obj.has(o,'~')){ t = t.toLowerCase() }
 					if(Type.obj.has(o,'=')){ return t === o['='] }
 					if(Type.obj.has(o,'*')){ if(t.slice(0, o['*'].length) === o['*']){ r = true; t = t.slice(o['*'].length) } else { return false }}
-					if(Type.obj.has(o,'&')){ if(t.slice(-o['&'].length) === o['&']){ r = true } else { return false }}
-					if(Type.obj.has(o,'+')){ if(t.indexOf(o['+']) >= 0){ r = true } else { return false }}
-					if(Type.obj.has(o,'-')){ if(t.indexOf(o['-']) < 0){ r = true } else { return false }}
+					if(Type.obj.has(o,'!')){ if(t.slice(-o['!'].length) === o['!']){ r = true } else { return false }}
+					if(Type.obj.has(o,'+')){
+						if(Type.list.map(Type.list.is(o['+'])? o['+'] : [o['+']], function(m){
+							if(t.indexOf(m) >= 0){ r = true } else { return true }
+						})){ return false }
+					}
+					if(Type.obj.has(o,'-')){
+						if(Type.list.map(Type.list.is(o['-'])? o['-'] : [o['-']], function(m){
+							if(t.indexOf(m) < 0){ r = true } else { return true }
+						})){ return false }
+					}
 					if(Type.obj.has(o,'>')){ if(t > o['>']){ r = true } else { return false }}
 					if(Type.obj.has(o,'<')){ if(t < o['<']){ r = true } else { return false }}
 					function fuzzy(t,f){ var n = -1, i = 0, c; for(;c = f[i++];){ if(!~(n = t.indexOf(c, n+1))){ return false }} return true } // via http://stackoverflow.com/questions/9206013/javascript-fuzzy-search
@@ -400,17 +424,13 @@
 				return Gun.is.rel(v) || false; // is the value a soul relation? Then it is valid and return it. If not, everything else remaining is an invalid data type. Custom extensions can be built on top of these primitives to support other types.
 			}
 
-			Gun.is.val.as = function(v){ // check if it is a valid value and return the value if so,
-				return Gun.is.val(v)? v : null; // else return null.
-			}
-
 			Gun.is.rel = function(v){ // this defines whether an object is a soul relation or not, they look like this: {'#': 'UUID'}
 				if(Gun.obj.is(v)){ // must be an object.
 					var id;
-					Gun.obj.map(v, function(soul, field){ // map over the object...
+					Gun.obj.map(v, function(s, f){ // map over the object...
 						if(id){ return id = false } // if ID is already defined AND we're still looping through the object, it is considered invalid.
-						if(field == Gun._.soul && Gun.text.is(soul)){ // the field should be '#' and have a text value.
-							id = soul; // we found the soul!
+						if(f == Gun._.soul && Gun.text.is(s)){ // the field should be '#' and have a text value.
+							id = s; // we found the soul!
 						} else {
 							return id = false; // if there exists anything else on the object that isn't the soul, then it is considered invalid.
 						}
@@ -422,70 +442,69 @@
 				return false; // the value was not a valid soul relation.
 			}
 
-			Gun.is.rel.ify = function(s, rel){ return Gun.obj.as(rel = {}, Gun._.soul, s), rel }
+			Gun.is.rel.ify = function(s){ var r = {}; return Gun.obj.put(r, Gun._.soul, s), r } // convert a soul into a relation and return it.
 
-			Gun.is.node = function(node, cb, t){ // checks to see if an object is a valid node.
-				var soul;
-				if(!Gun.obj.is(node)){ return false } // must be an object.
-				if(soul = Gun.is.node.soul(node)){ // must have a soul on it.
-					return !Gun.obj.map(node, function(val, field){ // we invert this because the way we check for this is via a negation.
-						if(field == Gun._.meta){ return } // skip over the metadata.
-						if(!Gun.is.val(val)){ return true } // it is true that this is an invalid node.
-						if(cb){ cb.call(t, val, field, node) } // optionally callback each field/value.
+			Gun.is.node = function(n, cb, t){ var s; // checks to see if an object is a valid node.
+				if(!Gun.obj.is(n)){ return false } // must be an object.
+				if(s = Gun.is.node.soul(n)){ // must have a soul on it.
+					return !Gun.obj.map(n, function(v, f){ // we invert this because the way we check for this is via a negation.
+						if(f == Gun._.meta){ return } // skip over the metadata.
+						if(!Gun.is.val(v)){ return true } // it is true that this is an invalid node.
+						if(cb){ cb.call(t, v, f, n) } // optionally callback each field/value.
 					});
 				}
 				return false; // nope! This was not a valid node.
 			}
 
-			Gun.is.node.ify = function(vertex, soul, state, t){
-				vertex = Gun.is.node.soul.ify(vertex, soul, t);
-				Gun.obj.map(vertex, function(val, field){
-					if(Gun._.meta === field){ return }
-					Gun.is.node.state.ify([vertex], field, val, state = state || Gun.time.now());
+			Gun.is.node.ify = function(n, s, o){ // convert a shallow object into a node.
+				o = Gun.bi.is(o)? {force: o} : o || {}; // detect options.
+				n = Gun.is.node.soul.ify(n, s, o.force); // put a soul on it.
+				Gun.obj.map(n, function(v, f){ // iterate over each field/value.
+					if(Gun._.meta === f){ return } // ignore meta.
+					Gun.is.node.state.ify([n], f, v, o.state = o.state || Gun.time.now()); // and set the state for this field and value on this node.
 				});
-				return vertex;
+				return n; // This will only be a valid node if the object wasn't already deep!
 			}
 
 			Gun.is.node.soul = function(n, s){ return (n && n._ && n._[s || Gun._.soul]) || false } // convenience function to check to see if there is a soul on a node and return it.
 
-			Gun.is.node.soul.ify = function(n, s, t){
-				n = n || {};
-				n._ = n._ || {};
-				n._[Gun._.soul] = t? s : n._[Gun._.soul] || s || Gun.text.random();
+			Gun.is.node.soul.ify = function(n, s, o){ // put a soul on an object.
+				n = n || {}; // make sure it exists.
+				n._ = n._ || {}; // make sure meta exists.
+				n._[Gun._.soul] = o? s : n._[Gun._.soul] || s || Gun.text.random(); // if it already has a soul then use that instead - unless you force the soul you want with an option.
 				return n;
 			}
 
-			Gun.is.node.state = function(n, f){ return (f && n && n._ && n._[Gun._.state] && n._[Gun._.state][f]) || false }
+			Gun.is.node.state = function(n, f){ return (f && n && n._ && n._[Gun._.state] && Gun.num.is(n._[Gun._.state][f]))? n._[Gun._.state][f] : false } // convenience function to get the state on a field on a node and return it.
 
-			Gun.is.node.state.ify = function(l, f, v, s){
-				var u, l = l.reverse(), d = l[0];
-				Gun.list.map(l, function(n, i){
-					n = n || {};
-					if(u !== v && Gun.is.val(v)){ n[f] = v }
-					n._ = n._ || {};
-					n = n._[Gun._.state] = n._[Gun._.state] || {};
-					if(i = d._[Gun._.state][f]){ n[f] = i }
-					if(Gun.num.is(s)){ n[f] = s }
+			Gun.is.node.state.ify = function(l, f, v, state){ // put a field's state and value on some nodes.
+				l = Gun.list.is(l)? l : [l]; // handle a list of nodes or just one node.
+				var l = l.reverse(), d = l[0]; // we might want to inherit the state from the last node in the list.
+				Gun.list.map(l, function(n, i){ // iterate over each node.
+					n = n || {}; // make sure it exists.
+					if(Gun.is.val(v)){ n[f] = v } // if we have a value, then put it.
+					n._ = n._ || {}; // make sure meta exists.
+					n = n._[Gun._.state] = n._[Gun._.state] || {}; // make sure HAM state exists.
+					if(i = d._[Gun._.state][f]){ n[f] = i } // inherit the state!
+					if(Gun.num.is(state)){ n[f] = state } // or manually set the state.
 				});
 			}
 
-			Gun.is.graph = function(graph, cb, fn, t){ // checks to see if an object is a valid graph.
+			Gun.is.graph = function(g, cb, fn, t){ // checks to see if an object is a valid graph.
 				var exist = false;
-				if(!Gun.obj.is(graph)){ return false } // must be an object.
-				return !Gun.obj.map(graph, function(node, soul){ // we invert this because the way we check for this is via a negation.
-					if(!node || soul !== Gun.is.node.soul(node) || !Gun.is.node(node, fn)){ return true } // it is true that this is an invalid graph.
-					(cb || function(){}).call(t, node, soul, function(fn){ // optional callback for each node.
-						if(fn){ Gun.is.node(node, fn, t) } // where we then have an optional callback for each field/value.
+				if(!Gun.obj.is(g)){ return false } // must be an object.
+				return !Gun.obj.map(g, function(n, s){ // we invert this because the way we check for this is via a negation.
+					if(!n || s !== Gun.is.node.soul(n) || !Gun.is.node(n, fn)){ return true } // it is true that this is an invalid graph.
+					(cb || function(){}).call(t, n, s, function(fn){ // optional callback for each node.
+						if(fn){ Gun.is.node(n, fn, t) } // where we then have an optional callback for each field/value.
 					});
 					exist = true;
 				}) && exist; // makes sure it wasn't an empty object.
 			}
 
-			Gun.is.graph.ify = function(node){
-				var soul;
-				if(soul = Gun.is.node.soul(node)){
-					var graph = {}; graph[soul] = node;
-					return graph;
+			Gun.is.graph.ify = function(n){ var s; // wrap a node into a graph.
+				if(s = Gun.is.node.soul(n)){ // grab the soul from the node, if it is a node.
+					return Gun.obj.put({}, s, n); // then create and return a graph which has a node on the matching soul property.
 				}
 			}
 
@@ -535,7 +554,7 @@
 				if(!prime){ ctx.err = {err: Gun.log("No data to merge!") } }
 				if(ctx.soul = Gun.is.node.soul(prime)){ prime = Gun.is.graph.ify(prime) }
 				if(!Gun.is.graph(prime, null, function(val, field, node){ var meta;
-					if(!(meta = (node||{})[Gun._.meta]) || !(meta = meta[Gun._.state]) || !Gun.num.is(meta[field])){
+					if(!Gun.num.is(Gun.is.node.state(node, field))){
 						return ctx.err = {err: Gun.log("No state on '" + field + "'!") }
 					}
 				}) || ctx.err){ return ctx.err = ctx.err || {err: Gun.log("Invalid graph!", prime)}, ctx }
@@ -733,13 +752,23 @@
 			Gun.chain.put = function(val, cb, opt){
 				opt = opt || {};
 				cb = cb || function(){}; cb.hash = {};
-				var gun = this, chain = gun.chain(), drift = Gun.time.now();
+				var gun = this, chain = gun.chain(), tmp = {val: val}, drift = Gun.time.now();
 				function put(at){
-					if(cb.hash[at.hash = at.hash || Gun.on.at.hash(at)]){ return } // if we have already seen this hash...
-					cb.hash[at.hash] = true; // else mark that we're processing the data (failure to write could still occur).
+					var val = tmp.val;
 					var ctx = {obj: val}; // prep the value for serialization
 					ctx.soul = at.field? at.soul : (at.at && at.at.soul) || at.soul; // figure out where we are
 					ctx.field = at.field? at.field : (at.at && at.at.field) || at.field; // did we come from some where?
+					if(Gun.is(val)){
+						if(!ctx.field){ return cb.call(chain, {err: ctx.err = Gun.log('No field to link node to!')}), chain._.at('err').emit(ctx.err) }
+						return val.val(function(node){
+							var soul = Gun.is.node.soul(node);
+							if(!soul){ return cb.call(chain, {err: ctx.err = Gun.log('Only a node can be linked! Not "' + node + '"!')}), chain._.at('err').emit(ctx.err) }
+							tmp.val = Gun.is.rel.ify(soul);
+							put(at);
+						});
+					}
+					if(cb.hash[at.hash = at.hash || Gun.on.at.hash(at)]){ return } // if we have already seen this hash...
+					cb.hash[at.hash] = true; // else mark that we're processing the data (failure to write could still occur).
 					ctx.by = chain.__.by(ctx.soul);
 					ctx.not = at.not || (at.at && at.at.not);
 					Gun.obj.del(at, 'not'); Gun.obj.del(at.at || at, 'not'); // the data is no longer not known! // TODO: BUG! It could have been asynchronous by the time we now delete these properties. Don't other parts of the code assume their deletion is synchronous?
@@ -779,7 +808,7 @@
 							Gun.union(chain, Gun.is.node.soul.ify({}, soul)); // fire off an end node if there hasn't already been one, to comply with the wire spec.
 						}}).err){ return cb.call(chain, err), chain._.at('err').emit(err) } // now actually union the serialized data, emit error if any occur.
 						if(Gun.fns.is(end.wire = chain.__.opt.wire.put)){
-							function wcb(err, ok, info){
+							var wcb = function(err, ok, info){
 								if(err){ return Gun.log(err.err || err), cb.call(chain, err), chain._.at('err').emit(err) }
 								return cb.call(chain, err, ok);
 							}
@@ -925,7 +954,7 @@
 						if(at.soul === key || at.key === key){ return }
 						if(cb.hash[at.hash = at.hash || Gun.on.at.hash(at)]){ return } cb.hash[at.hash] = true;
 						ctx.obj = (1 === Gun.is.node.soul(ctx.node, 'key'))? Gun.obj.copy(ctx.node) : Gun.obj.put({}, at.soul, Gun.is.rel.ify(at.soul));
-						Gun.obj.as((ctx.put = Gun.is.node.ify(ctx.obj, key, null, true))._, 'key', 1);
+						Gun.obj.as((ctx.put = Gun.is.node.ify(ctx.obj, key, true))._, 'key', 1);
 						gun.__.gun.put(ctx.put, function(err, ok){cb.call(this, err, ok)}, {chain: opt.chain, key: true, init: true});
 					}
 					if(opt.soul){
@@ -1136,6 +1165,18 @@
 				return chain;
 			}
 
+			Gun.chain.set = function(item, cb, opt){
+				var gun = this, ctx = {};
+				if(!Gun.is(item)){ return cb.call(gun, {err: Gun.log('Set only supports node references currently!')}), gun }
+				item.val(function(node){
+					if(ctx.done){ return } ctx.done = true;
+					var put = {}, soul = Gun.is.node.soul(node);
+					if(!soul){ return cb.call(gun, {err: Gun.log('Only a node can be linked! Not "' + node + '"!')}) }
+					gun.put(Gun.obj.put(put, soul, Gun.is.rel.ify(soul)), cb, opt);
+				})
+				return gun;
+			}
+
 			Gun.chain.init = function(cb, opt){
 				var gun = this;
 				gun._.at('null').event(function(at){
@@ -1149,7 +1190,7 @@
 					if(at.soul){
 						if(ctx.by.node){ return }
 						var soul = Gun.text.random();
-						gun.__.gun.put(Gun.is.node.soul.ify({}, soul, {init: true}));
+						gun.__.gun.put(Gun.is.node.soul.ify({}, soul), null, {init: true});
 						gun.__.gun.key(at.soul, null, soul);
 					}
 				}, {raw: true});
@@ -1285,7 +1326,7 @@
 		if(!this.Gun){ return }
 		if(!window.JSON){ throw new Error("Include JSON first: ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js") } // for old IE use
 
-		;(function(exports){ // TODO: BUG!!!! Remove the artificial setTimeout!!!!!
+		;(function(exports){
 			function s(){}
 			s.put = function(key, val){ return store.setItem(key, Gun.text.ify(val)) }
 			s.get = function(key, cb){ setTimeout(function(){ return cb(null, Gun.obj.ify(store.getItem(key) || null)) },1)}
@@ -1445,9 +1486,9 @@
 					if(!c){ return }
 					if(ws && ws.close instanceof Function){ ws.close() }
 					if(1006 === c.code){ // websockets cannot be used
-						ws = r.ws.peers[opt.base] = false;
+						/*ws = r.ws.peers[opt.base] = false; // 1006 has mixed meanings, therefore we can no longer respect it.
 						r.transport(opt, cb);
-						return;
+						return;*/
 					}
 					ws = r.ws.peers[opt.base] = null; // this will make the next request try to reconnect
 					setTimeout(function(){
@@ -1560,12 +1601,18 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	/*jslint node: true*/
+
+	/*
+		creates peer objects
+		and assigns event handlers
+		to them.
+	*/
+
 	'use strict';
-	var initiator, view, peers, Gun, SimplePeer;
-	peers = __webpack_require__(5);
-	Gun = __webpack_require__(3);
-	SimplePeer = __webpack_require__(6);
-	view = __webpack_require__(39);
+	var peers = __webpack_require__(5);
+	var Gun = __webpack_require__(3);
+	var SimplePeer = __webpack_require__(6);
+	var view = __webpack_require__(39);
 	var Stream = __webpack_require__(40);
 
 
@@ -1587,12 +1634,12 @@
 			peer.destroy();
 			delete peers.online[id];
 		});
-		peer.on('data', function (data) {
+		peer.on('data', function (req) {
 			var event = 'request';
-			if (data.response) {
-				event = data.response;
+			if (req.response) {
+				event = req.response;
 			}
-			Stream.emit(event, data);
+			Stream.emit(event, req, peer);
 		});
 
 		return peer;
@@ -7500,7 +7547,6 @@
 
 	module.exports = view = {
 		h1: $('h1'),
-		input: $('input'),
 
 		connection: function () {
 			view.h1.style.color = '#00ba00';
@@ -7514,9 +7560,6 @@
 		disconnect: function () {
 			view.h1.style.color = '#ba0000';
 			view.h1.innerHTML = 'Disconnected';
-		},
-		data: function (input) {
-			view.input.value = input;
 		}
 	};
 
@@ -7672,12 +7715,19 @@
 
 	    // each session description object
 	    requests.map().val(function (SDO, key) {
+				if (typeof SDO === 'object') {
+					return;
+				}
 	      if (key === 'id' || filter(SDO)) {
 	        return;
 	      }
 
-	      var signal = JSON.parse(SDO);
-	      peer.signal(signal);
+				var signal = JSON.parse(SDO);
+
+				// don't signal if the connection is closed
+				if (!peer.destroyed) {
+					peer.signal(signal);
+				}
 
 	    });
 	  });
@@ -7697,69 +7747,6 @@
 /* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/*jslint node: true, nomen: true*/
-	'use strict';
-	var Gun = __webpack_require__(3);
-	var local = __webpack_require__(46);
-	var peers = __webpack_require__(5);
-	var Stream = __webpack_require__(40);
-	var stream = new Stream();
-
-	stream.on('request', function (obj) {
-		var online = peers.online;
-		local.db.get(obj.query['#'], function (err, node) {
-			if (online[obj.peer]) {
-				if (err) {
-					online[obj.peer].send(err);
-				}
-				online[obj.peer].send({
-					value: node,
-					response: obj.request
-				});
-			}
-		});
-	});
-
-	module.exports = function (query, cb, opt) {
-		var request = Gun.text.random(20);
-
-		local.db.get(query[Gun._.soul], cb);
-
-		stream.on(request, function (data) {
-			if (typeof data === 'string') {
-				return cb(data);
-			}
-			cb(null, data.value);
-		});
-
-		peers.online.broadcast({
-			query: query,
-			peer: local.ID,
-			request: request
-		});
-	};
-
-
-/***/ },
-/* 45 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/*jslint node: true*/
-	'use strict';
-	var Gun = __webpack_require__(3);
-	var local = __webpack_require__(46);
-
-	module.exports = function (graph, cb, opt) {
-		Gun.is.graph(graph, function (node, soul) {
-			local.db.put(node, cb).key(soul);
-		});
-	};
-
-
-/***/ },
-/* 46 */
-/***/ function(module, exports, __webpack_require__) {
-
 	/*jslint node: true*/
 	var Gun = __webpack_require__(3);
 
@@ -7770,6 +7757,71 @@
 		}),
 
 		ID: Gun.text.random()
+	};
+
+
+/***/ },
+/* 45 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*jslint node: true, nomen: true*/
+	'use strict';
+	var Gun = __webpack_require__(3);
+	var local = __webpack_require__(44);
+	var peers = __webpack_require__(5);
+	var Stream = __webpack_require__(40);
+	var stream = new Stream();
+
+	stream.on('request', function (req, peer) {
+		local.db.__.opt.wire.get(req.value, function (err, node) {
+			if (peer.connected) {
+				if (err) {
+					return peer.send(err);
+				}
+				peer.send({
+					value: node,
+					response: req.ID
+				});
+			}
+		});
+	});
+
+	module.exports = function (query, cb, opt) {
+		var requestID = Gun.text.random(20);
+
+		local.db.__.opt.wire.get(query, cb, opt);
+
+		stream.on(requestID, function (data) {
+			if (data.err) {
+				return cb(data.err);
+			}
+			cb(null, data.value);
+
+			// when calling `.put`, the raw `.get` driver responds
+			// with more data causing it to infinitely recurse.
+			// support options for server stuns.
+		});
+
+		peers.online.broadcast({
+			value: query,
+			ID: requestID
+		});
+	};
+
+
+/***/ },
+/* 46 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*jslint node: true*/
+	'use strict';
+	var Gun = __webpack_require__(3);
+	var local = __webpack_require__(44);
+
+	module.exports = function (graph, cb, opt) {
+		Gun.is.graph(graph, function (node, soul) {
+			local.db.put(node, cb).key(soul);
+		});
 	};
 
 

@@ -7,7 +7,7 @@
     "example": "examples"
   },
   "dependencies": {
-    "gun": "^0.3.1",
+    "gun": "^0.3.3",
     "iso-emitter": "^1.0.0",
     "simple-peer": "^5.11.8"
   },

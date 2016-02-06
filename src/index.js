@@ -35,6 +35,14 @@ Gun.on('opt').event(function (gun, opt) {
 			id: local.ID
 		});
 
+		// optimization
+		// erase peer after leaving
+//		if (browser) {
+//			window.onunload = function () {
+//				peers.db.path(local.ID).put(null);
+//			};
+//		}
+
 		handshake(peers.db, local.ID);
 	}
 
