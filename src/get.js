@@ -6,12 +6,22 @@ var peers = require('../lib/peers');
 var Stream = require('iso-emitter');
 var stream = new Stream();
 
-stream.on('request', function (req, peer) {
+
+
+// server
+stream.on('get', function (req, peer) {
+
+	// this won't be necessary in the future!
 	local.db.__.opt.wire.get(req.value, function (err, node) {
+
 		if (peer.connected) {
 			if (err) {
-				return peer.send(err);
+				return peer.send({
+					err: err.err,
+					response: req.ID
+				});
 			}
+
 			peer.send({
 				value: node,
 				response: req.ID
@@ -20,6 +30,9 @@ stream.on('request', function (req, peer) {
 	});
 });
 
+
+
+// client
 module.exports = function (query, cb, opt) {
 	var requestID = Gun.text.random(20);
 
@@ -36,7 +49,10 @@ module.exports = function (query, cb, opt) {
 		// support options for server stuns.
 	});
 
+	// be more verbose until we have
+	// Gun.is.lex, cuz I'm lazy :P
 	peers.online.broadcast({
+		type: 'get',
 		value: query,
 		ID: requestID
 	});
