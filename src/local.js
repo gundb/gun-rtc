@@ -1,5 +1,6 @@
 /*jslint node: true*/
 var Gun = require('gun/gun');
+var Emitter = require('events');
 
 // local data interface
 window.local = module.exports = {
@@ -7,5 +8,6 @@ window.local = module.exports = {
 		rtc: false
 	}),
 
-	ID: Gun.text.random()
+	ID: Gun.text.random(),
+	events: new Emitter()
 };

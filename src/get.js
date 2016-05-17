@@ -3,57 +3,53 @@
 var Gun = require('gun/gun');
 var local = require('./local');
 var peers = require('../lib/peers');
-var Stream = require('iso-emitter');
-var stream = new Stream();
-
-
+var emitter = local.events;
+var cache = {};
 
 // server
-stream.on('get', function (req, peer) {
+emitter.on('get', function (req, peer) {
+	if (!local.db || cache[req.RID]) {
+		return;
+	}
+	cache[req.RID] = true;
 
 	// this won't be necessary in the future!
-	local.db.__.opt.wire.get(req.value, function (err, node) {
+	local.db.__.opt.wire.get(req.lex, function (err, value) {
 
-		if (peer.connected) {
-			if (err) {
-				return peer.send({
-					err: err.err,
-					response: req.ID
-				});
-			}
-
-			peer.send({
-				value: node,
-				response: req.ID
-			});
+		if (!peer.connected) {
+			return;
 		}
-	});
+
+		peer.send({
+			event: req.RID,
+			value: value,
+			err: err
+		});
+	}, req.opt);
 });
 
 
 
 // client
-module.exports = function (query, cb, opt) {
+module.exports = function (lex, cb, opt) {
+	opt = {};
 	var requestID = Gun.text.random(20);
 
-	local.db.__.opt.wire.get(query, cb, opt);
+	local.db.__.opt.wire.get(lex, cb, opt);
 
-	stream.on(requestID, function (data) {
-		if (data.err) {
-			return cb(data.err);
-		}
-		cb(null, data.value);
-
-		// when calling `.put`, the raw `.get` driver responds
-		// with more data causing it to infinitely recurse.
-		// support options for server stuns.
+	// when calling `.put`, the raw `.get` driver responds
+	// with more data causing it to infinitely recurse.
+	// support options for server stuns.
+	emitter.on(requestID, function (data) {
+		cb(data.err, data.value);
 	});
 
 	// be more verbose until we have
 	// Gun.is.lex, cuz I'm lazy :P
 	peers.online.broadcast({
-		type: 'get',
-		value: query,
-		ID: requestID
+		RID: requestID,
+		event: 'get',
+		lex: lex,
+		opt: opt
 	});
 };

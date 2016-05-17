@@ -18,4 +18,6 @@ and automatically upgrade your boring websocket app to a decentralized, resilian
 ## What's the holdup?
 We've been holding off the heavy development until [gun's 0.3](https://github.com/amark/gun/blob/master/CHANGELOG.md) release hit the masses. Now that most of the ecosystem has caught up with the release, we're ready to dive back in and build the future.
 
+> **Update (05/17):** through development, we've come to realize our plugin system could use some love. We're hoping to have a release out soon that allows us to build modules (like gun-rtc) without overloading and masking other plugins just to read and write data. After we've got that resolved, then we can push forward on gun-rtc without needing hackery.
+
 Star this repository to get occasional project updates and to aid my narcissism.

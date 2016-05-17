@@ -8,7 +8,7 @@ var port = process.argv[2] || 8080;
 
 
 var gun = new Gun({
-	file: false
+	file: 'data.json'
 }).wsp(app);
 
 function serve(route) {

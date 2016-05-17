@@ -48,25 +48,21 @@
 	'use strict';
 
 	var handshake = __webpack_require__(1);
-	var scope = __webpack_require__(43);
 	var peers = __webpack_require__(5);
+	var SimplePeer = __webpack_require__(6);
 	var Gun = __webpack_require__(3);
-	var local = __webpack_require__(44);
+	var local = __webpack_require__(43);
+	Gun.time.now = function () {
+		return new Date().getTime();
+	};
 
 	Gun.on('opt').event(function (gun, opt) {
 		opt = opt || {};
-		opt.wire = opt.wire || {};
-
-		var SimplePeer, support, browser;
-
-		SimplePeer = __webpack_require__(6);
+		var support, browser, wire, rtc = opt.rtc;
 		support = SimplePeer.WEBRTC_SUPPORT;
 		browser = typeof window !== 'undefined';
-
-		if (opt.rtc === false || (!support && browser)) {
-			return;
-		}
-		if (!gun.__.opt.peers) {
+		
+		if (rtc === false || (!support && browser)) {
 			return;
 		}
 
@@ -75,27 +71,25 @@
 			peers.db = new Gun({
 				peers: gun.__.opt.peers,
 				rtc: false
-			}).get(scope + 'peers');
+			}).get({
+				'#': 'GUN_RTC_PEERS_SETUP',
+				'>': {
+					'>': new Date().getTime()
+				}
+			});
 
 			peers.db.path(local.ID).put({
 				id: local.ID
 			});
 
-			// optimization
-			// erase peer after leaving
-	//		if (browser) {
-	//			window.onunload = function () {
-	//				peers.db.path(local.ID).put(null);
-	//			};
-	//		}
-
 			handshake(peers.db, local.ID);
 		}
 
+		wire = opt.wire || {};
 		gun.opt({
 			wire: {
-				get: opt.wire.get || __webpack_require__(45),
-				put: opt.wire.get || __webpack_require__(46)
+				get: wire.get || __webpack_require__(44),
+				put: wire.put || __webpack_require__(45)
 			}
 		}, true);
 
@@ -133,6 +127,7 @@
 	var Gun = __webpack_require__(3);
 	var initiator = __webpack_require__(4);
 	var filter = __webpack_require__(41);
+	var online = __webpack_require__(5).online;
 
 	var younger = (function () {
 	  'use strict';
@@ -141,9 +136,6 @@
 			return (Gun.is.node.state(node, 'id') > time);
 	  };
 	}());
-
-
-
 
 
 	function greet(peers, myID) {
@@ -155,6 +147,9 @@
 	    if (obj.id === myID || !younger(obj)) {
 	      return;
 	    }
+			if (online[obj.id]) {
+				return;
+			}
 
 	    var client, peer = this;
 
@@ -1613,7 +1608,8 @@
 	var Gun = __webpack_require__(3);
 	var SimplePeer = __webpack_require__(6);
 	var view = __webpack_require__(39);
-	var Stream = __webpack_require__(40);
+	var local = __webpack_require__(43);
+	var emitter = local.events;
 
 
 
@@ -1634,11 +1630,10 @@
 			peer.destroy();
 			delete peers.online[id];
 		});
-		
-		
+
+
 		peer.on('data', function (data) {
-			var event = data.response || data.type;
-			Stream.emit(event, data, peer);
+			emitter.emit(data.event, data, peer);
 		});
 
 		return peer;
@@ -7564,109 +7559,7 @@
 
 
 /***/ },
-/* 40 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/*global module*/
-
-	var Stream;
-
-	(function () {
-		'use strict';
-
-		var streams = [];
-
-		function array(obj) {
-			return Array.prototype.slice.call(obj);
-		}
-
-		function callbacks(args) {
-			return array(args).filter(function (cb) {
-				return typeof cb === 'function';
-			});
-		}
-
-		function events(args) {
-			return array(args).filter(function (event) {
-				return typeof event === 'string';
-			});
-		}
-
-		Stream = function () {
-			if (!(this instanceof Stream)) {
-				return new Stream();
-			}
-			this.events = {};
-			streams.push(this);
-		};
-
-		Stream.prototype = {
-			constructor: Stream,
-			on: function () {
-				var cbs, names, stream = this;
-				cbs = callbacks(arguments);
-				names = events(arguments);
-
-				names.forEach(function (event) {
-					cbs.forEach(function (cb) {
-						if (!stream.events[event]) {
-							stream.events[event] = [];
-						}
-						stream.events[event].push(cb);
-					});
-				});
-
-				return this;
-			},
-
-			emit: function (event) {
-				if (!event) {
-					return this;
-				}
-				var args = array(arguments).slice(1);
-				if (!this.events[event]) {
-					return this;
-				}
-				this.events[event].forEach(function (cb) {
-					cb.apply(null, args);
-				});
-
-				return this;
-			},
-
-			bind: function () {
-				var names, stream = this;
-				names = events(arguments);
-
-				return function () {
-					var args = array(arguments);
-
-					names.forEach(function (event) {
-						stream.emit.apply(stream, [event].concat(args));
-					});
-
-					return names.length;
-				};
-			}
-
-		};
-
-		Stream.emit = function (event) {
-			var args = array(arguments);
-			streams.forEach(function (stream) {
-				stream.emit.apply(stream, args);
-			});
-			return streams.length;
-		};
-
-		if (true) {
-			module.exports = Stream;
-		}
-
-	}());
-
-
-/***/ },
+/* 40 */,
 /* 41 */
 /***/ function(module, exports) {
 
@@ -7736,18 +7629,11 @@
 
 /***/ },
 /* 43 */
-/***/ function(module, exports) {
-
-	/*jslint node: true*/
-	module.exports = 'gx904egpMe7bl1ggaPVv:';
-
-
-/***/ },
-/* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*jslint node: true*/
 	var Gun = __webpack_require__(3);
+	var Emitter = __webpack_require__(21);
 
 	// local data interface
 	window.local = module.exports = {
@@ -7755,7 +7641,69 @@
 			rtc: false
 		}),
 
-		ID: Gun.text.random()
+		ID: Gun.text.random(),
+		events: new Emitter()
+	};
+
+
+/***/ },
+/* 44 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*jslint node: true, nomen: true*/
+	'use strict';
+	var Gun = __webpack_require__(3);
+	var local = __webpack_require__(43);
+	var peers = __webpack_require__(5);
+	var emitter = local.events;
+	var cache = {};
+
+	// server
+	emitter.on('get', function (req, peer) {
+		if (!local.db || cache[req.RID]) {
+			return;
+		}
+		cache[req.RID] = true;
+
+		// this won't be necessary in the future!
+		local.db.__.opt.wire.get(req.lex, function (err, value) {
+
+			if (!peer.connected) {
+				return;
+			}
+
+			peer.send({
+				event: req.RID,
+				value: value,
+				err: err
+			});
+		}, req.opt);
+	});
+
+
+
+	// client
+	module.exports = function (lex, cb, opt) {
+		opt = {};
+		var requestID = Gun.text.random(20);
+
+		local.db.__.opt.wire.get(lex, cb, opt);
+
+		// when calling `.put`, the raw `.get` driver responds
+		// with more data causing it to infinitely recurse.
+		// support options for server stuns.
+		emitter.on(requestID, function (data) {
+			cb(data.err, data.value);
+		});
+
+		// be more verbose until we have
+		// Gun.is.lex, cuz I'm lazy :P
+		peers.online.broadcast({
+			RID: requestID,
+			event: 'get',
+			lex: lex,
+			opt: opt
+		});
 	};
 
 
@@ -7766,114 +7714,60 @@
 	/*jslint node: true, nomen: true*/
 	'use strict';
 	var Gun = __webpack_require__(3);
-	var local = __webpack_require__(44);
+	var local = __webpack_require__(43);
 	var peers = __webpack_require__(5);
-	var Stream = __webpack_require__(40);
-	var stream = new Stream();
-
-
+	var events = local.events;
+	var cache = {};
 
 	// server
-	stream.on('get', function (req, peer) {
+	events.on('put', function (req, peer) {
+		if (cache[req.RID]) {
+			return;
+		}
+		cache[req.RID] = true;
 
 		// this won't be necessary in the future!
-		local.db.__.opt.wire.get(req.value, function (err, node) {
-
-			if (peer.connected) {
-				if (err) {
-					return peer.send({
-						err: err.err,
-						response: req.ID
-					});
-				}
-
-				peer.send({
-					value: node,
-					response: req.ID
-				});
+		local.db.__.opt.wire.put(req.graph, function (err, node) {
+			if (!peer.connected) {
+				return;
 			}
-		});
+			peer.send({
+				event: req.RID,
+				err: err,
+				value: node
+			});
+		}, req.opt);
 	});
-
-
 
 	// client
-	module.exports = function (query, cb, opt) {
+	module.exports = function (graph, cb, opt) {
+		opt = {};
 		var requestID = Gun.text.random(20);
 
-		local.db.__.opt.wire.get(query, cb, opt);
-
-		stream.on(requestID, function (data) {
-			if (data.err) {
-				return cb(data.err);
-			}
-			cb(null, data.value);
-
-			// when calling `.put`, the raw `.get` driver responds
-			// with more data causing it to infinitely recurse.
-			// support options for server stuns.
-		});
-
-		// be more verbose until we have
-		// Gun.is.lex, cuz I'm lazy :P
-		peers.online.broadcast({
-			type: 'get',
-			value: query,
-			ID: requestID
-		});
-	};
-
-/***/ },
-/* 46 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/*jslint node: true, nomen: true*/
-	'use strict';
-	var Gun = __webpack_require__(3);
-	var local = __webpack_require__(44);
-	var peers = __webpack_require__(5);
-	var Stream = __webpack_require__(40);
-	var stream = new Stream();
-
-	stream.on('put', function (req, peer) {
-
-		// this won't be necessary in the future!
-		local.db.__.opt.wire.put(req.value, function (err, node) {
-			if (peer.connected) {
-				if (err) {
-					return peer.send({
-						err: err.err,
-						response: req.ID
-					});
-				}
-
-				peer.send({
-					value: node,
-					response: req.ID
-				});
-			}
-		});
-	});
-
-	module.exports = function (graph, cb, opt) {
-		var requestID = Gun.text.random();
+	//	Gun.is.graph(graph, function (node, soul) {
+	//		var graph = local.db.__.graph;
+	//		if (!graph[soul]) {
+	//			graph[soul] = node;
+	//		}
+	//	});
+	//	local.db.__.opt.wire.put(graph, cb, opt);
 		
-		// this shall not be needed in future things
-		local.db.__.opt.wire.put(graph, cb, opt);
+		Gun.is.graph(graph, function (node, soul) {
+			local.db.put(node).key(soul);
+		});
 
-		stream.on(requestID, function (data) {
-			if (data && data.err) {
-				return cb(data);
-			}
-			cb(null, data);
+		events.on(requestID, function (data) {
+			cb(data.err, data.value);
 		});
 
 		peers.online.broadcast({
-			type: 'put',
-			value: graph,
-			ID: requestID
+			RID: requestID,
+			event: 'put',
+			graph: graph,
+			opt: opt
 		});
 	};
+
 
 /***/ }
 /******/ ]);
