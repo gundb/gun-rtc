@@ -9,7 +9,7 @@
   "dependencies": {
     "gun": "^0.3.3",
     "iso-emitter": "^1.0.0",
-    "simple-peer": "^5.11.8"
+    "simple-peer": "^6.1.0"
   },
   "devDependencies": {
     "webpack": "^1.12.13",
